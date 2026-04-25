@@ -254,7 +254,13 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
                 message="The model does not support Completions API",
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-        response = await self.openai_serving_completion.create_completion(request, raw_request)
+        try:
+            response = await self.openai_serving_completion.create_completion(request, raw_request)
+        except VLLMValidationError as e:
+            return create_error_response(
+                message=str(e),
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            )
 
         if isinstance(response, engineError):
             return create_error_response(
@@ -277,7 +283,13 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
                 message="The model does not support Chat Completions API",
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-        response = await self.openai_serving_chat.create_chat_completion(request, raw_request)
+        try:
+            response = await self.openai_serving_chat.create_chat_completion(request, raw_request)
+        except VLLMValidationError as e:
+            return create_error_response(
+                message=str(e),
+                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            )
 
         if isinstance(response, engineError):
             return create_error_response(
