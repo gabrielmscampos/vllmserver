@@ -18,6 +18,9 @@ hf-models/
 # setuptools_scm
 vllmserver/_version.py
 
+# ruff
+.ruff_cache
+
 # pytest
 coverage.xml
 .coverage
