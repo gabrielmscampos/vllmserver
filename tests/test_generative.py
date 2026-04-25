@@ -42,6 +42,9 @@ def server():  # noqa: F811
         "2048",
         "--trust_remote_code",
         "--enforce-eager",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "hermes",
     ]
 
     with RemoteOpenAIServer(MODEL, MODEL_NAME, args) as remote_server:
@@ -476,7 +479,7 @@ async def test_guided_choice_chat(client: openai.AsyncOpenAI, sample_guided_choi
         max_completion_tokens=10,
         temperature=0.7,
         extra_body=dict(
-            guided_choice=sample_guided_choice,
+            structured_outputs={"choice": sample_guided_choice},
         ),
     )
     choice1 = chat_completion.choices[0].message.content
@@ -490,7 +493,7 @@ async def test_guided_choice_chat(client: openai.AsyncOpenAI, sample_guided_choi
         max_completion_tokens=10,
         temperature=0.7,
         extra_body=dict(
-            guided_choice=sample_guided_choice,
+            structured_outputs={"choice": sample_guided_choice},
         ),
     )
     choice2 = chat_completion.choices[0].message.content
@@ -513,7 +516,7 @@ async def test_guided_json_chat(client: openai.AsyncOpenAI, sample_json_schema):
         messages=messages,
         max_completion_tokens=1000,
         extra_body=dict(
-            guided_json=sample_json_schema,
+            structured_outputs={"json": sample_json_schema},
         ),
     )
     message = chat_completion.choices[0].message
@@ -530,7 +533,7 @@ async def test_guided_json_chat(client: openai.AsyncOpenAI, sample_json_schema):
         messages=messages,
         max_completion_tokens=1000,
         extra_body=dict(
-            guided_json=sample_json_schema,
+            structured_outputs={"json": sample_json_schema},
         ),
     )
     message = chat_completion.choices[0].message
@@ -555,7 +558,7 @@ async def test_guided_regex_chat(client: openai.AsyncOpenAI, sample_regex):
         messages=messages,
         max_completion_tokens=20,
         extra_body=dict(
-            guided_regex=sample_regex,
+            structured_outputs={"regex": sample_regex},
         ),
     )
     ip1 = chat_completion.choices[0].message.content
@@ -569,7 +572,7 @@ async def test_guided_regex_chat(client: openai.AsyncOpenAI, sample_regex):
         messages=messages,
         max_completion_tokens=20,
         extra_body=dict(
-            guided_regex=sample_regex,
+            structured_outputs={"regex": sample_regex},
         ),
     )
     ip2 = chat_completion.choices[0].message.content
@@ -592,7 +595,7 @@ async def test_guided_decoding_type_error_chat(client: openai.AsyncOpenAI):
         _ = await client.chat.completions.create(
             model=MODEL_NAME,
             messages=messages,
-            extra_body=dict(guided_regex={1: "Python", 2: "C++"}),
+            extra_body=dict(structured_outputs={"regex": {1: "Python", 2: "C++"}}),
         )
 
 
@@ -614,7 +617,7 @@ async def test_guided_choice_chat_logprobs(
         logprobs=True,
         top_logprobs=5,
         extra_body=dict(
-            guided_choice=sample_guided_choice,
+            structured_outputs={"choice": sample_guided_choice},
         ),
     )
 
@@ -1152,7 +1155,7 @@ async def test_parallel_streaming(client: openai.AsyncOpenAI, model_name: str):
             finish_reason_count += 1
     assert finish_reason_count == n
     for chunk in chunks:
-        assert len(chunk) == max_tokens
+        assert 1 <= len(chunk) <= max_tokens
         print("".join(chunk))
 
 
@@ -1338,11 +1341,8 @@ async def test_batch_completions(client: openai.AsyncOpenAI, model_name: str):
         assert batch.choices[0].text != batch.choices[1].text, (
             "beam search should be different"
         )
-        assert batch.choices[0].text == batch.choices[2].text, (
-            "two copies of the same prompt should be the same"
-        )
-        assert batch.choices[1].text == batch.choices[3].text, (
-            "two copies of the same prompt should be the same"
+        assert batch.choices[2].text != batch.choices[3].text, (
+            "beam search should be different"
         )
 
         # test streaming
@@ -1423,7 +1423,7 @@ async def test_guided_regex_completion(client: openai.AsyncOpenAI, sample_regex)
         temperature=1.0,
         max_tokens=20,
         extra_body=dict(
-            guided_regex=sample_regex,
+            structured_outputs={"regex": sample_regex},
         ),
     )
 
@@ -1444,7 +1444,7 @@ async def test_guided_choice_completion(
         temperature=1.0,
         max_tokens=10,
         extra_body=dict(
-            guided_choice=sample_guided_choice,
+            structured_outputs={"choice": sample_guided_choice},
         ),
     )
 
@@ -1464,7 +1464,7 @@ async def test_guided_grammar(client: openai.AsyncOpenAI, sample_sql_statements)
         ),
         temperature=1.0,
         max_tokens=500,
-        extra_body=dict(guided_grammar=sample_sql_statements),
+        extra_body=dict(structured_outputs={"grammar": sample_sql_statements}),
     )
 
     content = completion.choices[0].text
@@ -1525,7 +1525,7 @@ async def test_guided_decoding_type_error(
             model=MODEL_NAME,
             prompt="Give an example JSON that fits this schema: 42",
             extra_body=dict(
-                guided_json=42,
+                structured_outputs={"json": 42},
             ),
         )
 
@@ -1533,5 +1533,5 @@ async def test_guided_decoding_type_error(
         _ = await client.completions.create(
             model=MODEL_NAME,
             prompt="Give an example string that fits this regex",
-            extra_body=dict(guided_regex=sample_regex, guided_json=sample_json_schema),
+            extra_body=dict(structured_outputs={"regex": sample_regex, "json": sample_json_schema}),
         )

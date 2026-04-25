@@ -115,4 +115,4 @@ async def test_rerank_max_model_len(server: RemoteOpenAIServer, model_name: str)
     )
     assert rerank_response.status_code == 400
     # Assert just a small fragments of the response
-    assert "Please reduce the length of the input." in rerank_response.text
+    assert "Please reduce the length of the input" in rerank_response.text

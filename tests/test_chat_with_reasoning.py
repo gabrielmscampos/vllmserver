@@ -62,12 +62,12 @@ async def test_reasoning(client: openai.AsyncOpenAI, model_name: str):
     )
 
     assert chat_completion.object != "error"
-    reasoning_content = chat_completion.choices[0].message.reasoning_content
+    reasoning_content = chat_completion.choices[0].message.reasoning
     content = chat_completion.choices[0].message.content
     assert reasoning_content is not None
     assert content is not None
 
-    print("reasoning_content for Round 1:", reasoning_content)
+    print("reasoning for Round 1:", reasoning_content)
     print("content for Round 1:", content)
 
     # Round 2
@@ -83,10 +83,10 @@ async def test_reasoning(client: openai.AsyncOpenAI, model_name: str):
     )
 
     assert chat_completion.object != "error"
-    reasoning_content = chat_completion.choices[0].message.reasoning_content
+    reasoning_content = chat_completion.choices[0].message.reasoning
     content = chat_completion.choices[0].message.content
     assert reasoning_content is not None
     assert content is not None
 
-    print("reasoning_content for Round 2:", reasoning_content)
+    print("reasoning for Round 2:", reasoning_content)
     print("content for Round 2:", content)
