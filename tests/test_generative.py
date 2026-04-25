@@ -16,6 +16,7 @@
 
 import json
 import re
+from typing import Any
 
 import jsonschema
 import openai
@@ -126,7 +127,7 @@ number: "1" | "2"
     [MODEL_NAME],
 )
 async def test_no_logprobs_chat(client: openai.AsyncOpenAI, model_name: str):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {"role": "user", "content": "what is 1+1?"},
     ]
@@ -150,7 +151,7 @@ async def test_no_logprobs_chat(client: openai.AsyncOpenAI, model_name: str):
     [MODEL_NAME],
 )
 async def test_some_logprobs_chat(client: openai.AsyncOpenAI, model_name: str):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {"role": "user", "content": "what is 1+1?"},
     ]
@@ -176,7 +177,7 @@ async def test_some_logprobs_chat(client: openai.AsyncOpenAI, model_name: str):
     [MODEL_NAME],
 )
 async def test_too_many_chat_logprobs(client: openai.AsyncOpenAI, model_name: str):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {"role": "user", "content": "what is 1+1?"},
     ]
@@ -232,10 +233,10 @@ async def test_prompt_logprobs_chat(
     else:
         completion = await client.chat.completions.create(**params)
         if prompt_logprobs is not None:
-            assert completion.prompt_logprobs is not None
-            assert len(completion.prompt_logprobs) > 0
+            assert completion.prompt_logprobs is not None  # type: ignore[attr-defined]
+            assert len(completion.prompt_logprobs) > 0  # type: ignore[attr-defined]
         else:
-            assert completion.prompt_logprobs is None
+            assert completion.prompt_logprobs is None  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -265,8 +266,8 @@ async def test_more_than_one_prompt_logprobs_chat(
     params["extra_body"] = {"prompt_logprobs": 2}
     completion_2 = await client.chat.completions.create(**params)
 
-    assert len(completion_1.prompt_logprobs[3]) == 2
-    assert len(completion_2.prompt_logprobs[3]) == 3
+    assert len(completion_1.prompt_logprobs[3]) == 2  # type: ignore[attr-defined]
+    assert len(completion_2.prompt_logprobs[3]) == 3  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -275,7 +276,7 @@ async def test_more_than_one_prompt_logprobs_chat(
     [MODEL_NAME],
 )
 async def test_single_chat_session(client: openai.AsyncOpenAI, model_name: str):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {"role": "user", "content": "what is 1+1?"},
     ]
@@ -319,7 +320,7 @@ async def test_single_chat_session(client: openai.AsyncOpenAI, model_name: str):
     [MODEL_NAME],
 )
 async def test_chat_streaming(client: openai.AsyncOpenAI, model_name: str):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {"role": "user", "content": "what is 1+1?"},
     ]
@@ -367,7 +368,7 @@ async def test_chat_streaming(client: openai.AsyncOpenAI, model_name: str):
 async def test_chat_completion_stream_options(
     client: openai.AsyncOpenAI, model_name: str
 ):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": "What is the capital of France?"},
     ]
@@ -386,7 +387,7 @@ async def test_chat_completion_stream_options(
 
     # Test stream=True, stream_options={"include_usage": True,
     #                                   "continuous_usage_stats": False}}
-    stream = await client.chat.completions.create(
+    stream = await client.chat.completions.create(  # type: ignore[call-overload]
         model=model_name,
         messages=messages,
         max_completion_tokens=10,
@@ -411,7 +412,7 @@ async def test_chat_completion_stream_options(
 
     # Test stream=False, stream_options={"include_usage": None}
     with pytest.raises(UnprocessableEntityError):
-        await client.chat.completions.create(
+        await client.chat.completions.create(  # type: ignore[call-overload]
             model=model_name,
             messages=messages,
             max_completion_tokens=10,
@@ -422,7 +423,7 @@ async def test_chat_completion_stream_options(
 
     # Test stream=False, stream_options={"include_usage": True}
     with pytest.raises(UnprocessableEntityError):
-        await client.chat.completions.create(
+        await client.chat.completions.create(  # type: ignore[call-overload]
             model=model_name,
             messages=messages,
             max_completion_tokens=10,
@@ -433,7 +434,7 @@ async def test_chat_completion_stream_options(
 
     # Test stream=True, stream_options={"include_usage": True,
     #                           "continuous_usage_stats": True}
-    stream = await client.chat.completions.create(
+    stream = await client.chat.completions.create(  # type: ignore[call-overload]
         model=model_name,
         messages=messages,
         max_completion_tokens=10,
@@ -466,7 +467,7 @@ async def test_chat_completion_stream_options(
 
 @pytest.mark.asyncio
 async def test_guided_choice_chat(client: openai.AsyncOpenAI, sample_guided_choice):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {
             "role": "user",
@@ -503,7 +504,7 @@ async def test_guided_choice_chat(client: openai.AsyncOpenAI, sample_guided_choi
 
 @pytest.mark.asyncio
 async def test_guided_json_chat(client: openai.AsyncOpenAI, sample_json_schema):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {
             "role": "user",
@@ -546,7 +547,7 @@ async def test_guided_json_chat(client: openai.AsyncOpenAI, sample_json_schema):
 
 @pytest.mark.asyncio
 async def test_guided_regex_chat(client: openai.AsyncOpenAI, sample_regex):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {
             "role": "user",
@@ -583,7 +584,7 @@ async def test_guided_regex_chat(client: openai.AsyncOpenAI, sample_regex):
 
 @pytest.mark.asyncio
 async def test_guided_decoding_type_error_chat(client: openai.AsyncOpenAI):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {
             "role": "user",
@@ -603,7 +604,7 @@ async def test_guided_decoding_type_error_chat(client: openai.AsyncOpenAI):
 async def test_guided_choice_chat_logprobs(
     client: openai.AsyncOpenAI, sample_guided_choice
 ):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {
             "role": "user",
@@ -632,7 +633,7 @@ async def test_guided_choice_chat_logprobs(
 
 @pytest.mark.asyncio
 async def test_named_tool_use(client: openai.AsyncOpenAI, sample_json_schema):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {
             "role": "user",
@@ -643,25 +644,30 @@ async def test_named_tool_use(client: openai.AsyncOpenAI, sample_json_schema):
 
     # non-streaming
 
+    tools: list[Any] = [
+        {
+            "type": "function",
+            "function": {
+                "name": "dummy_function_name",
+                "description": "This is a dummy function",
+                "parameters": sample_json_schema,
+            },
+        }
+    ]
     chat_completion = await client.chat.completions.create(
         model=MODEL_NAME,
         messages=messages,
         max_completion_tokens=1000,
-        tools=[
-            {
-                "type": "function",
-                "function": {
-                    "name": "dummy_function_name",
-                    "description": "This is a dummy function",
-                    "parameters": sample_json_schema,
-                },
-            }
-        ],
+        tools=tools,
         tool_choice={"type": "function", "function": {"name": "dummy_function_name"}},
     )
     message = chat_completion.choices[0].message
+    assert message.content is not None
     assert len(message.content) == 0
-    json_string = message.tool_calls[0].function.arguments
+    assert message.tool_calls is not None
+    tool_call = message.tool_calls[0]
+    assert hasattr(tool_call, "function")
+    json_string = tool_call.function.arguments  # type: ignore[union-attr]
     json1 = json.loads(json_string)
     jsonschema.validate(instance=json1, schema=sample_json_schema)
 
@@ -676,16 +682,7 @@ async def test_named_tool_use(client: openai.AsyncOpenAI, sample_json_schema):
         model=MODEL_NAME,
         messages=messages,
         max_completion_tokens=1000,
-        tools=[
-            {
-                "type": "function",
-                "function": {
-                    "name": "dummy_function_name",
-                    "description": "This is a dummy function",
-                    "parameters": sample_json_schema,
-                },
-            }
-        ],
+        tools=tools,
         tool_choice={"type": "function", "function": {"name": "dummy_function_name"}},
         stream=True,
     )
@@ -698,7 +695,9 @@ async def test_named_tool_use(client: openai.AsyncOpenAI, sample_json_schema):
             assert delta.role == "assistant"
         assert delta.content is None or len(delta.content) == 0
         if delta.tool_calls:
-            output.append(delta.tool_calls[0].function.arguments)
+            fn = delta.tool_calls[0].function
+            if fn is not None and fn.arguments is not None:
+                output.append(fn.arguments)
         if chunk.choices[0].finish_reason is not None:
             finish_reason_count += 1
     # finish reason should only return in last block
@@ -713,13 +712,24 @@ async def test_named_tool_use(client: openai.AsyncOpenAI, sample_json_schema):
 async def test_inconsistent_tool_choice_and_tools(
     client: openai.AsyncOpenAI, sample_json_schema
 ):
-    messages = [
+    messages: list[Any] = [
         {"role": "system", "content": "you are a helpful assistant"},
         {
             "role": "user",
             "content": f"Give an example JSON for an employee profile that "
             f"fits this schema: {sample_json_schema}",
         },
+    ]
+
+    inconsistent_tools: list[Any] = [
+        {
+            "type": "function",
+            "function": {
+                "name": "dummy_function_name",
+                "description": "This is a dummy function",
+                "parameters": sample_json_schema,
+            },
+        }
     ]
 
     with pytest.raises(UnprocessableEntityError):
@@ -738,36 +748,18 @@ async def test_inconsistent_tool_choice_and_tools(
             model=MODEL_NAME,
             messages=messages,
             max_completion_tokens=1000,
-            tools=[
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "dummy_function_name",
-                        "description": "This is a dummy function",
-                        "parameters": sample_json_schema,
-                    },
-                }
-            ],
+            tools=inconsistent_tools,
             tool_choice={
                 "type": "function",
                 "function": {"name": "nondefined_function_name"},
             },
         )
     with pytest.raises(UnprocessableEntityError):
-        await client.chat.completions.create(
+        await client.chat.completions.create(  # type: ignore[call-overload]
             model=MODEL_NAME,
             messages=messages,
             max_completion_tokens=1000,
-            tools=[
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "dummy_function_name",
-                        "description": "This is a dummy function",
-                        "parameters": sample_json_schema,
-                    },
-                }
-            ],
+            tools=inconsistent_tools,
             tool_choice={},
         )
 
@@ -841,12 +833,12 @@ async def test_extra_fields_allowed(client: openai.AsyncOpenAI):
     resp = await client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
-            {
+            {  # type: ignore[list-item]
                 "role": "user",
                 "content": "what is 1+1?",
                 "extra_field": "0",
             }
-        ],  # type: ignore
+        ],
         temperature=0,
         seed=0,
     )
@@ -859,7 +851,7 @@ async def test_extra_fields_allowed(client: openai.AsyncOpenAI):
 async def test_complex_message_content(client: openai.AsyncOpenAI):
     resp = await client.chat.completions.create(
         model=MODEL_NAME,
-        messages=[
+        messages=[  # type: ignore[list-item]
             {
                 "role": "user",
                 "content": [
@@ -886,11 +878,11 @@ async def test_custom_role(client: openai.AsyncOpenAI):
     resp1 = await client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
-            {
+            {  # type: ignore[list-item, misc]
                 "role": "my-custom-role",
                 "content": "what is 1+1?",
             }
-        ],  # type: ignore
+        ],
         temperature=0,
         seed=0,
     )
@@ -898,11 +890,11 @@ async def test_custom_role(client: openai.AsyncOpenAI):
     resp2 = await client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
-            {
+            {  # type: ignore[list-item, misc]
                 "role": "my-custom-role",
                 "content": [{"type": "text", "text": "what is 1+1?"}],
             }
-        ],  # type: ignore
+        ],
         temperature=0,
         seed=0,
     )
@@ -968,7 +960,7 @@ async def test_single_completion(
         temperature=0.0,
     )
     assert len(completion.choices[0].text) >= 1
-    assert completion.choices[0].prompt_logprobs is None
+    assert completion.choices[0].prompt_logprobs is None  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -1086,14 +1078,14 @@ async def test_prompt_logprobs_completion(
     else:
         completion = await client.completions.create(**params)
         if prompt_logprobs is not None:
-            assert completion.choices[0].prompt_logprobs is not None
-            assert len(completion.choices[0].prompt_logprobs) > 0
+            assert completion.choices[0].prompt_logprobs is not None  # type: ignore[attr-defined]
+            assert len(completion.choices[0].prompt_logprobs) > 0  # type: ignore[attr-defined]
 
-            assert completion.choices[1].prompt_logprobs is not None
-            assert len(completion.choices[1].prompt_logprobs) > 0
+            assert completion.choices[1].prompt_logprobs is not None  # type: ignore[attr-defined]
+            assert len(completion.choices[1].prompt_logprobs) > 0  # type: ignore[attr-defined]
 
         else:
-            assert completion.choices[0].prompt_logprobs is None
+            assert completion.choices[0].prompt_logprobs is None  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -1154,9 +1146,9 @@ async def test_parallel_streaming(client: openai.AsyncOpenAI, model_name: str):
         if chunk.choices[0].finish_reason is not None:
             finish_reason_count += 1
     assert finish_reason_count == n
-    for chunk in chunks:
-        assert 1 <= len(chunk) <= max_tokens
-        print("".join(chunk))
+    for chunk_list in chunks:
+        assert 1 <= len(chunk_list) <= max_tokens
+        print("".join(chunk_list))
 
 
 @pytest.mark.asyncio
@@ -1169,7 +1161,7 @@ async def test_completion_stream_options(client: openai.AsyncOpenAI, model_name:
 
     # Test stream=True, stream_options=
     #     {"include_usage": False, "continuous_usage_stats": False}
-    stream = await client.completions.create(
+    stream = await client.completions.create(  # type: ignore[call-overload]
         model=model_name,
         prompt=prompt,
         max_tokens=5,
@@ -1186,7 +1178,7 @@ async def test_completion_stream_options(client: openai.AsyncOpenAI, model_name:
 
     # Test stream=True, stream_options=
     #     {"include_usage": False, "continuous_usage_stats": True}
-    stream = await client.completions.create(
+    stream = await client.completions.create(  # type: ignore[call-overload]
         model=model_name,
         prompt=prompt,
         max_tokens=5,
@@ -1202,7 +1194,7 @@ async def test_completion_stream_options(client: openai.AsyncOpenAI, model_name:
 
     # Test stream=True, stream_options=
     #     {"include_usage": True, "continuous_usage_stats": False}
-    stream = await client.completions.create(
+    stream = await client.completions.create(  # type: ignore[call-overload]
         model=model_name,
         prompt=prompt,
         max_tokens=5,
@@ -1229,7 +1221,7 @@ async def test_completion_stream_options(client: openai.AsyncOpenAI, model_name:
 
     # Test stream=True, stream_options=
     #     {"include_usage": True, "continuous_usage_stats": True}
-    stream = await client.completions.create(
+    stream = await client.completions.create(  # type: ignore[call-overload]
         model=model_name,
         prompt=prompt,
         max_tokens=5,
@@ -1260,7 +1252,7 @@ async def test_completion_stream_options(client: openai.AsyncOpenAI, model_name:
     # Test stream=False, stream_options=
     #     {"include_usage": None}
     with pytest.raises(UnprocessableEntityError):
-        await client.completions.create(
+        await client.completions.create(  # type: ignore[call-overload]
             model=model_name,
             prompt=prompt,
             max_tokens=5,
@@ -1272,7 +1264,7 @@ async def test_completion_stream_options(client: openai.AsyncOpenAI, model_name:
     # Test stream=False, stream_options=
     #    {"include_usage": True}
     with pytest.raises(UnprocessableEntityError):
-        await client.completions.create(
+        await client.completions.create(  # type: ignore[call-overload]
             model=model_name,
             prompt=prompt,
             max_tokens=5,
@@ -1284,7 +1276,7 @@ async def test_completion_stream_options(client: openai.AsyncOpenAI, model_name:
     # Test stream=False, stream_options=
     #     {"continuous_usage_stats": None}
     with pytest.raises(UnprocessableEntityError):
-        await client.completions.create(
+        await client.completions.create(  # type: ignore[call-overload]
             model=model_name,
             prompt=prompt,
             max_tokens=5,
@@ -1296,7 +1288,7 @@ async def test_completion_stream_options(client: openai.AsyncOpenAI, model_name:
     # Test stream=False, stream_options=
     #    {"continuous_usage_stats": True}
     with pytest.raises(UnprocessableEntityError):
-        await client.completions.create(
+        await client.completions.create(  # type: ignore[call-overload]
             model=model_name,
             prompt=prompt,
             max_tokens=5,
@@ -1346,7 +1338,7 @@ async def test_batch_completions(client: openai.AsyncOpenAI, model_name: str):
         )
 
         # test streaming
-        batch = await client.completions.create(
+        batch_stream = await client.completions.create(
             model=model_name,
             prompt=prompts,
             max_tokens=5,
@@ -1354,7 +1346,7 @@ async def test_batch_completions(client: openai.AsyncOpenAI, model_name: str):
             stream=True,
         )
         texts = [""] * 2
-        async for chunk in batch:
+        async for chunk in batch_stream:
             assert len(chunk.choices) == 1
             choice = chunk.choices[0]
             texts[choice.index] += choice.text
@@ -1506,11 +1498,16 @@ async def test_echo_logprob_completion(
         assert re.search(r"^" + prompt_text, completion.choices[0].text)
         logprobs = completion.choices[0].logprobs
         assert logprobs is not None
+        assert logprobs.text_offset is not None
         assert len(logprobs.text_offset) > 5
+        assert logprobs.token_logprobs is not None
         assert len(logprobs.token_logprobs) > 5 and logprobs.token_logprobs[0] is None
+        assert logprobs.top_logprobs is not None
         assert len(logprobs.top_logprobs) > 5 and logprobs.top_logprobs[0] is None
-        for top_logprobs in logprobs.top_logprobs[1:]:
-            assert max(logprobs_arg, 1) <= len(top_logprobs) <= logprobs_arg + 1
+        for entry in logprobs.top_logprobs[1:]:
+            assert entry is not None
+            assert max(logprobs_arg, 1) <= len(entry) <= logprobs_arg + 1
+        assert logprobs.tokens is not None
         assert len(logprobs.tokens) > 5
 
 

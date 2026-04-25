@@ -14,6 +14,8 @@
 # limitations under the License.
 
 
+from typing import Any
+
 import openai
 import pytest
 import pytest_asyncio
@@ -55,14 +57,14 @@ async def client(server):
 )
 async def test_reasoning(client: openai.AsyncOpenAI, model_name: str):
     # Round 1
-    messages = [{"role": "user", "content": "9.11 and 9.8, which is greater?"}]
+    messages: list[Any] = [{"role": "user", "content": "9.11 and 9.8, which is greater?"}]
 
     chat_completion = await client.chat.completions.create(
         model=model_name, messages=messages
     )
 
     assert chat_completion.object != "error"
-    reasoning_content = chat_completion.choices[0].message.reasoning
+    reasoning_content = chat_completion.choices[0].message.reasoning  # type: ignore[attr-defined]
     content = chat_completion.choices[0].message.content
     assert reasoning_content is not None
     assert content is not None
@@ -83,7 +85,7 @@ async def test_reasoning(client: openai.AsyncOpenAI, model_name: str):
     )
 
     assert chat_completion.object != "error"
-    reasoning_content = chat_completion.choices[0].message.reasoning
+    reasoning_content = chat_completion.choices[0].message.reasoning  # type: ignore[attr-defined]
     content = chat_completion.choices[0].message.content
     assert reasoning_content is not None
     assert content is not None

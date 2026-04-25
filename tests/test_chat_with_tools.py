@@ -15,6 +15,7 @@
 
 
 import json
+from typing import Any
 
 import openai
 import pytest
@@ -59,7 +60,7 @@ async def client(server):
     [MODEL_NAME],
 )
 async def test_function_calling(client: openai.AsyncOpenAI, model_name: str):
-    tools = [
+    tools: list[Any] = [
         {
             "type": "function",
             "function": {
@@ -79,7 +80,7 @@ async def test_function_calling(client: openai.AsyncOpenAI, model_name: str):
         }
     ]
 
-    messages = [{"role": "user", "content": "What's the weather like in Paris today?"}]
+    messages: list[Any] = [{"role": "user", "content": "What's the weather like in Paris today?"}]
 
     chat_completion = await client.chat.completions.create(
         model=model_name, messages=messages, tools=tools
@@ -90,7 +91,7 @@ async def test_function_calling(client: openai.AsyncOpenAI, model_name: str):
     assert choice.message.tool_calls is not None
     assert len(choice.message.tool_calls) == 1
     tool_call = choice.message.tool_calls[0]
-    assert tool_call.function.name == "get_weather"
+    assert tool_call.function.name == "get_weather"  # type: ignore[union-attr]
 
     def get_weather(latitude, longitude):
         response = requests.get(
@@ -99,7 +100,7 @@ async def test_function_calling(client: openai.AsyncOpenAI, model_name: str):
         data = response.json()
         return data["current"]["temperature_2m"]
 
-    args = json.loads(tool_call.function.arguments)
+    args = json.loads(tool_call.function.arguments)  # type: ignore[union-attr]
 
     result = get_weather(args["latitude"], args["longitude"])
 
