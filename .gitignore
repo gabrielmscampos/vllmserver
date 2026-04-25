@@ -25,3 +25,5 @@ vllmserver/_version.py
 coverage.xml
 .coverage
 .coverage.*
+.pytest_cache
+htmlcov
