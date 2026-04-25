@@ -66,10 +66,9 @@ class RemoteOpenAIServer:
             [
                 "python",
                 "-m",
-                "huggingfaceserver",
+                "vllmserver",
                 model_id,
                 model_name,
-                "--backend=vllm",
                 *vllm_serve_args,
             ],
             env=env,

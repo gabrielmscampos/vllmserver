@@ -1,0 +1,14 @@
+[run]
+source =
+    vllmserver
+omit =
+    vllmserver/_version.py
+
+[report]
+show_missing = true
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml

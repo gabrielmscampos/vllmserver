@@ -17,7 +17,8 @@ import openai
 import pytest
 import pytest_asyncio
 from huggingface_hub import snapshot_download
-from server import RemoteOpenAIServer
+
+from .server import RemoteOpenAIServer
 
 
 MODEL = "Qwen/Qwen2-1.5B-Instruct"

@@ -17,7 +17,8 @@
 import openai
 import pytest
 import pytest_asyncio
-from server import RemoteOpenAIServer
+
+from .server import RemoteOpenAIServer
 
 
 MODEL = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"

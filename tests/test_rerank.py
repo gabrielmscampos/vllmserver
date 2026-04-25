@@ -17,7 +17,8 @@
 import pytest
 import requests
 from kserve.protocol.rest.openai.types import Rerank
-from server import RemoteOpenAIServer
+
+from .server import RemoteOpenAIServer
 
 
 MODEL = "BAAI/bge-reranker-base"

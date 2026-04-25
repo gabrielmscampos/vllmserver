@@ -23,8 +23,9 @@ import pytest
 import pytest_asyncio
 import torch
 from openai import UnprocessableEntityError
-from server import RemoteOpenAIServer
 from vllm.tokenizers import get_tokenizer
+
+from .server import RemoteOpenAIServer
 
 
 MODEL = "Qwen/Qwen2-1.5B-Instruct"
