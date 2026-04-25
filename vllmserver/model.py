@@ -381,7 +381,7 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
         if args.served_model_name is not None:
             args.model_name = args.served_model_name[0]
 
-        model = VLLMModel(args.model_name, args, request_logger=request_logger)
+        model = VLLMModel(args.model_name, args, request_logger=request_logger)  # type: ignore[arg-type]
         model.load()
 
         return model
