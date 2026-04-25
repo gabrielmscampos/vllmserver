@@ -27,3 +27,6 @@ coverage.xml
 .coverage.*
 .pytest_cache
 htmlcov
+
+# mypy
+.mypy_cache

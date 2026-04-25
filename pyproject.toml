@@ -23,7 +23,31 @@ dependencies = [
 
 [dependency-groups]
 lint = [
+    "mypy>=1.20.2",
+    "pandas-stubs>=3.0.0.260204",
     "ruff>=0.15.10",
+    "scipy-stubs>=1.17.1.4",
+    "types-cachetools>=6.2.0.20260408",
+    "types-colorama>=0.4.15.20260408",
+    "types-defusedxml>=0.7.0.20260408",
+    "types-grpcio>=1.0.0.20260408",
+    "types-gunicorn>=25.3.0.20260408",
+    "types-jsonschema>=4.26.0.20260408",
+    "types-networkx>=3.6.1.20260408",
+    "types-pexpect>=4.9.0.20260408",
+    "types-protobuf>=7.34.1.20260408",
+    "types-psutil>=7.2.2.20260408",
+    "types-pyasn1>=0.6.0.20260408",
+    "types-pygments>=2.20.0.20260408",
+    "types-pywin32>=311.0.0.20260408",
+    "types-pyyaml>=6.0.12.20260408",
+    "types-regex>=2026.4.4.20260408",
+    "types-requests>=2.33.0.20260408",
+    "types-setuptools>=82.0.0.20260408",
+    "types-simplejson>=3.20.0.20260408",
+    "types-tabulate>=0.10.0.20260408",
+    "types-tensorflow>=2.18.0.20260408",
+    "types-tqdm>=4.67.3.20260408",
 ]
 test = [
     "pytest>=9.0.3",
