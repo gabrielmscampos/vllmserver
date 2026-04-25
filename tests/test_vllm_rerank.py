@@ -1,4 +1,5 @@
 # Copyright 2025 The KServe Authors.
+# Copyright 2026 Gabriel Moreira da Silva Campos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +16,6 @@
 
 import pytest
 import requests
-
 from kserve.protocol.rest.openai.types import Rerank
 from server import RemoteOpenAIServer
 

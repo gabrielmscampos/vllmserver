@@ -1,4 +1,5 @@
 # Copyright 2025 The KServe Authors.
+# Copyright 2026 Gabriel Moreira da Silva Campos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,21 +14,17 @@
 # limitations under the License.
 
 
-import pytest
-import openai
-import pytest_asyncio
-
 import json
 import re
-from typing import Dict, List, Optional
 
 import jsonschema
+import openai
+import pytest
+import pytest_asyncio
 import torch
 from openai import UnprocessableEntityError
-
-from vllm.tokenizers import get_tokenizer
-
 from server import RemoteOpenAIServer
+from vllm.tokenizers import get_tokenizer
 
 
 MODEL = "Qwen/Qwen2-1.5B-Instruct"
@@ -207,9 +204,9 @@ async def test_too_many_chat_logprobs(client: openai.AsyncOpenAI, model_name: st
     [(MODEL_NAME, 1), (MODEL_NAME, 0), (MODEL_NAME, -1), (MODEL_NAME, None)],
 )
 async def test_prompt_logprobs_chat(
-    client: openai.AsyncOpenAI, model_name: str, prompt_logprobs: Optional[int]
+    client: openai.AsyncOpenAI, model_name: str, prompt_logprobs: int | None
 ):
-    params: Dict = {
+    params: dict = {
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "Who won the world series in 2020?"},
@@ -245,7 +242,7 @@ async def test_prompt_logprobs_chat(
 async def test_more_than_one_prompt_logprobs_chat(
     client: openai.AsyncOpenAI, model_name: str
 ):
-    params: Dict = {
+    params: dict = {
         "messages": [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "Who won the world series in 2020?"},
@@ -341,7 +338,7 @@ async def test_chat_streaming(client: openai.AsyncOpenAI, model_name: str):
         temperature=0.0,
         stream=True,
     )
-    chunks: List[str] = []
+    chunks: list[str] = []
     finish_reason_count = 0
     async for chunk in stream:
         delta = chunk.choices[0].delta
@@ -1070,9 +1067,9 @@ async def test_too_many_completion_logprobs(
     [(MODEL_NAME, -1), (MODEL_NAME, 0), (MODEL_NAME, 1), (MODEL_NAME, None)],
 )
 async def test_prompt_logprobs_completion(
-    client: openai.AsyncOpenAI, model_name: str, prompt_logprobs: Optional[int]
+    client: openai.AsyncOpenAI, model_name: str, prompt_logprobs: int | None
 ):
-    params: Dict = {
+    params: dict = {
         "prompt": ["A robot may not injure another robot", "My name is"],
         "model": model_name,
     }
@@ -1113,7 +1110,7 @@ async def test_completion_streaming(client: openai.AsyncOpenAI, model_name: str)
     stream = await client.completions.create(
         model=model_name, prompt=prompt, max_tokens=5, temperature=0.0, stream=True
     )
-    chunks: List[str] = []
+    chunks: list[str] = []
     finish_reason_count = 0
     async for chunk in stream:
         chunks.append(chunk.choices[0].text)
@@ -1144,7 +1141,7 @@ async def test_parallel_streaming(client: openai.AsyncOpenAI, model_name: str):
     stream = await client.completions.create(
         model=model_name, prompt=prompt, max_tokens=max_tokens, n=n, stream=True
     )
-    chunks: List[List[str]] = [[] for i in range(n)]
+    chunks: list[list[str]] = [[] for i in range(n)]
     finish_reason_count = 0
     async for chunk in stream:
         index = chunk.choices[0].index

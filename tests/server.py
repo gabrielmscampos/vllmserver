@@ -1,4 +1,5 @@
 # Copyright 2025 The KServe Authors.
+# Copyright 2026 Gabriel Moreira da Silva Campos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,13 +17,13 @@ import os
 import subprocess
 import sys
 import time
-import requests
-from typing import Dict, List, Optional
+
 import openai
-from vllm.utils.argparse_utils import FlexibleArgumentParser
-from vllm.entrypoints.openai.cli_args import make_arg_parser
+import requests
 from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.entrypoints.openai.cli_args import make_arg_parser
 from vllm.model_executor.model_loader import get_model_loader
+from vllm.utils.argparse_utils import FlexibleArgumentParser
 
 
 class RemoteOpenAIServer:
@@ -32,10 +33,10 @@ class RemoteOpenAIServer:
         self,
         model: str,
         model_name: str,
-        vllm_serve_args: List[str],
+        vllm_serve_args: list[str],
         *,
-        env_dict: Optional[Dict[str, str]] = None,
-        max_wait_seconds: Optional[float] = None,
+        env_dict: dict[str, str] | None = None,
+        max_wait_seconds: float | None = None,
     ) -> None:
         parser = FlexibleArgumentParser(description="huggingface server")
         parser = make_arg_parser(parser)
@@ -99,7 +100,7 @@ class RemoteOpenAIServer:
                 time.sleep(60)
                 if requests.get(url).status_code == 200:
                     break
-            except Exception:
+            except Exception:  # noqa: BLE001
                 # this exception can only be raised by requests.get,
                 # which means the server is not ready yet.
                 # the stack trace is not useful, so we suppress it

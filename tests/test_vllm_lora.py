@@ -1,4 +1,5 @@
 # Copyright 2025 The KServe Authors.
+# Copyright 2026 Gabriel Moreira da Silva Campos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +17,6 @@ import openai
 import pytest
 import pytest_asyncio
 from huggingface_hub import snapshot_download
-
 from server import RemoteOpenAIServer
 
 
@@ -42,8 +42,7 @@ def lora_server(qwen2_lora_files):
         "--enforce-eager",
         "--enable-lora",
         "--lora-modules",
-        '{"name": "%s", "path": "%s", "base_model_name": "%s"}'
-        % (LORA_NAME, qwen2_lora_files, MODEL),
+        f'{{"name": "{LORA_NAME}", "path": "{qwen2_lora_files}", "base_model_name": "{MODEL}"}}',
     ]
 
     with RemoteOpenAIServer(MODEL, MODEL_NAME, args) as remote_server:

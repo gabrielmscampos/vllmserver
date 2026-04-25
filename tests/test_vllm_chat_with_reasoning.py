@@ -1,4 +1,5 @@
 # Copyright 2025 The KServe Authors.
+# Copyright 2026 Gabriel Moreira da Silva Campos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +14,9 @@
 # limitations under the License.
 
 
-import pytest
 import openai
+import pytest
 import pytest_asyncio
-
 from server import RemoteOpenAIServer
 
 
