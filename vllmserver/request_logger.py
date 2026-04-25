@@ -43,9 +43,6 @@ class RequestLogger:
                 prompt = prompt[:max_log_len]
 
             if prompt_token_ids is not None:
-                if isinstance(prompt_token_ids, list):
-                    for i, p in enumerate(prompt_token_ids):
-                        prompt_token_ids[i] = p[:max_log_len]
                 prompt_token_ids = prompt_token_ids[:max_log_len]
 
         trace_logger.info(
