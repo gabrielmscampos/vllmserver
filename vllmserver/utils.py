@@ -1,4 +1,5 @@
 # Copyright 2024 The KServe Authors.
+# Copyright 2026 Gabriel Moreira da Silva Campos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,42 +13,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from argparse import ArgumentParser
-from typing import Any, AsyncIterator, Optional, Union
-from pathlib import Path
+from argparse import Namespace
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import cast
 
 from kserve.logging import logger
-
-try:
-    from vllm.engine.arg_utils import AsyncEngineArgs
-    from vllm.engine.protocol import EngineClient
-    from vllm.entrypoints.openai.cli_args import make_arg_parser
-    from vllm.model_executor.models import ModelRegistry
-    from vllm.usage.usage_lib import UsageContext
-
-    _vllm = True
-except ImportError:
-    AsyncEngineArgs = Any
-    _vllm = False
-
+from kserve_storage import Storage
 from transformers import AutoConfig
+from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.engine.protocol import EngineClient
+from vllm.entrypoints.openai.cli_args import make_arg_parser
+from vllm.model_executor.models import ModelRegistry
+from vllm.usage.usage_lib import UsageContext
+from vllm.utils.argparse_utils import FlexibleArgumentParser
 
 
-def vllm_available() -> bool:
-    return _vllm
+def list_of_strings(arg):
+    return arg.split(",")
+
+
+def get_model_id_or_path(args: Namespace) -> str | Path:
+    # If --model_id is specified then pass model_id to HF API, otherwise load the model from /mnt/models
+    if args.model_id:
+        return cast(str, args.model_id)
+    return Path(Storage.download(args.model_dir))
 
 
 def infer_vllm_supported_from_model_architecture(
-    model_config_path: Union[Path, str],
+    model_config_path: Path | str,
     trust_remote_code: bool = False,
 ) -> bool:
-    if not _vllm:
-        return False
-
-    model_config = AutoConfig.from_pretrained(
-        model_config_path, trust_remote_code=trust_remote_code
-    )
+    model_config = AutoConfig.from_pretrained(model_config_path, trust_remote_code=trust_remote_code)
     for architecture in model_config.architectures:
         if architecture not in ModelRegistry.get_supported_archs():
             logger.info("not a supported model by vLLM")
@@ -55,15 +53,11 @@ def infer_vllm_supported_from_model_architecture(
     return True
 
 
-def maybe_add_vllm_cli_parser(parser: ArgumentParser) -> ArgumentParser:
-    if not _vllm:
-        return parser
+def add_vllm_cli_parser(parser: FlexibleArgumentParser) -> FlexibleArgumentParser:
     return make_arg_parser(parser)
 
 
 def build_vllm_engine_args(args) -> "AsyncEngineArgs":
-    if not _vllm:
-        return None
     return AsyncEngineArgs.from_cli_args(args)
 
 
@@ -82,7 +76,7 @@ async def build_async_engine_client_from_engine_args(
 
     from vllm.v1.engine.async_llm import AsyncLLM
 
-    async_llm: Optional[AsyncLLM] = None
+    async_llm: AsyncLLM | None = None
     try:
         async_llm = AsyncLLM.from_vllm_config(
             vllm_config=vllm_config,

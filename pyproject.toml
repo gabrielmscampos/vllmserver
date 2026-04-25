@@ -1,33 +1,26 @@
-[project]
-authors = [
-    {name = "Dan Sun", email = "dsun20@bloomberg.net"},
-]
-license = {text = "Apache-2.0"}
-requires-python = ">=3.10,<3.14"
-dependencies = [
-    "kserve[llm] @ file:///${PROJECT_ROOT}/../kserve",
-    "kserve-storage @ file:///${PROJECT_ROOT}/../storage",
-    "transformers>=4.53.2",
-    "accelerate<2.0.0,>=1.6.0",
-    "bitsandbytes>=0.45.3",
-    "modelscope<2.0.0,>=1.16.0",
-    "setuptools>=70.0.0",
-]
-name = "huggingfaceserver"
-version = "0.18.0rc1"
-description = "Model Server implementation for huggingface. Not intended for use outside KServe Frameworks Images."
-readme = "README.md"
+[build-system]
+requires = ["setuptools>=77", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[dependency-groups]
-test = [
-    "pytest<8.0.0,>=7.4.4",
-    "pytest-cov<6.0.0,>=5.0.0",
-    "mypy<1.0,>=0.991",
-    "pytest-asyncio<1.0.0,>=0.23.4",
-    "pytest-httpx<1.0.0,>=0.30.0",
-    "einops<1.0.0,>=0.8.0",
-    "openai>=2.0.0",
+[project]
+name = "vllmserver"
+dynamic = ["version"]
+description = "Model server implementation for vLLM. Not intended for use outside KServe."
+readme = "README.md"
+license = {text = "Apache-2.0"}
+authors = [
+    { name = "Gabriel Moreira", email = "gabrielmscampos@gmail.com" }
 ]
-dev = [
-    "black[colorama]~=24.3.0",
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.135.3,<1",
+    "kserve>=0.17.0,<1",
+    "kserve-storage>=0.17.0,<1",
+    "torch>=2.10.0,<3",
+    "transformers>=4.57.6,<5",
+    "vllm>=0.19.0,<1",
 ]
+
+[tool.setuptools_scm]
+version_scheme = "no-guess-dev"
+version_file = "vllmserver/_version.py"

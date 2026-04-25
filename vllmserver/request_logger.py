@@ -1,4 +1,5 @@
 # Copyright 2024 The KServe Authors.
+# Copyright 2026 Gabriel Moreira da Silva Campos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, List, Union, Any
+from typing import Any
 
 from kserve.logging import trace_logger
 
 
 class RequestLogger:
-    def __init__(self, *, max_log_len: Optional[int]) -> None:
+    def __init__(self, *, max_log_len: int | None) -> None:
         super().__init__()
 
         self.max_log_len = max_log_len
@@ -26,12 +27,12 @@ class RequestLogger:
     def log_inputs(
         self,
         request_id: str,
-        prompt: Optional[Union[str, List[str]]] = None,
-        prompt_token_ids: Optional[List[int]] = None,
-        prompt_embeds: Optional[Any] = None,
-        params: Optional[Any] = None,
-        lora_request: Optional[Any] = None,
-        prompt_adapter_request: Optional[Any] = None,
+        prompt: str | list[str] | None = None,
+        prompt_token_ids: list[int] | None = None,
+        prompt_embeds: Any | None = None,
+        params: Any | None = None,
+        lora_request: Any | None = None,
+        prompt_adapter_request: Any | None = None,
     ) -> None:
         max_log_len = self.max_log_len
         if max_log_len is not None:

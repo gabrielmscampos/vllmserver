@@ -1,4 +1,5 @@
 # Copyright 2023 The KServe Authors.
+# Copyright 2026 Gabriel Moreira da Silva Campos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,24 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import Enum, auto as auto_value
-from .encoder_model import HuggingfaceEncoderModel
-from .generative_model import HuggingfaceGenerativeModel
-from .time_series_model import HuggingFaceTimeSeriesModel
+from ._version import __version__
 
 
-class Backend(str, Enum):
-    """
-    Backend defines the framework used to load a model
-    """
-
-    auto = auto_value()
-    huggingface = auto_value()
-    vllm = auto_value()
-
-
-__all__ = [
-    "HuggingfaceGenerativeModel",
-    "HuggingfaceEncoderModel",
-    "HuggingFaceTimeSeriesModel",
-]
+__all__ = ["__version__"]

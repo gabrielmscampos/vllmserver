@@ -1,4 +1,5 @@
 # Copyright 2024 The KServe Authors.
+# Copyright 2026 Gabriel Moreira da Silva Campos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,61 +14,71 @@
 # limitations under the License.
 
 from argparse import Namespace
-from typing import Any, Dict, Optional, Union, AsyncGenerator
+from collections.abc import AsyncGenerator
 from http import HTTPStatus
+from typing import Any
 
 import torch
+import transformers
+import vllm
 from fastapi import Request
-from vllm import AsyncEngineArgs
-from vllm.entrypoints.logger import RequestLogger
-from vllm.engine.protocol import EngineClient
-from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion
-from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat
-from vllm.entrypoints.pooling.embed.serving import ServingEmbedding
-from vllm.entrypoints.pooling.score.serving import ServingScores
-from vllm.tool_parsers import ToolParserManager
-from vllm.entrypoints.openai.models.protocol import BaseModelPath
-from vllm.entrypoints.openai.models.serving import OpenAIServingModels
-from vllm.entrypoints.openai.cli_args import validate_parsed_serve_args
-from vllm.entrypoints.chat_utils import load_chat_template
-from vllm.entrypoints.openai.engine.protocol import ErrorResponse as engineError
-from vllm.reasoning import ReasoningParserManager
-
-from kserve.protocol.rest.openai.errors import create_error_response
 from kserve.protocol.rest.openai import (
     OpenAIEncoderModel,
     OpenAIGenerativeModel,
 )
+from kserve.protocol.rest.openai.errors import create_error_response
 from kserve.protocol.rest.openai.types import (
-    Completion,
     ChatCompletion,
-    CompletionRequest,
     ChatCompletionRequest,
-    EmbeddingRequest,
+    Completion,
+    CompletionRequest,
     Embedding,
+    EmbeddingRequest,
     ErrorResponse,
-    RerankRequest,
     Rerank,
+    RerankRequest,
 )
-from .utils import build_async_engine_client_from_engine_args, build_vllm_engine_args
+from vllm import AsyncEngineArgs
+from vllm.engine.protocol import EngineClient
+from vllm.entrypoints.chat_utils import load_chat_template
+from vllm.entrypoints.logger import RequestLogger
+from vllm.entrypoints.openai.chat_completion.serving import OpenAIServingChat
+from vllm.entrypoints.openai.cli_args import validate_parsed_serve_args
+from vllm.entrypoints.openai.completion.serving import OpenAIServingCompletion
+from vllm.entrypoints.openai.engine.protocol import ErrorResponse as engineError
+from vllm.entrypoints.openai.models.protocol import BaseModelPath
+from vllm.entrypoints.openai.models.serving import OpenAIServingModels
+from vllm.entrypoints.pooling.embed.serving import ServingEmbedding
+from vllm.entrypoints.pooling.score.serving import ServingScores
+from vllm.exceptions import VLLMValidationError
+from vllm.reasoning import ReasoningParserManager
+from vllm.tool_parsers import ToolParserManager
+
+from .request_logger import RequestLogger as KServeCustomRequestLogger
+from .utils import (
+    build_async_engine_client_from_engine_args,
+    build_vllm_engine_args,
+    get_model_id_or_path,
+    infer_vllm_supported_from_model_architecture,
+)
 
 
 class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-extension-no-member
     engine_client: EngineClient
-    vllm_engine_args: AsyncEngineArgs = None
-    args: Namespace = None
+    vllm_engine_args: AsyncEngineArgs | None = None
+    args: Namespace | None = None
     ready: bool = False
-    openai_serving_models: Optional[OpenAIServingModels] = None
-    openai_serving_completion: Optional[OpenAIServingCompletion] = None
-    openai_serving_chat: Optional[OpenAIServingChat] = None
-    openai_serving_embedding: Optional[ServingEmbedding] = None
-    serving_reranking: Optional[ServingScores] = None
+    openai_serving_models: OpenAIServingModels | None = None
+    openai_serving_completion: OpenAIServingCompletion | None = None
+    openai_serving_chat: OpenAIServingChat | None = None
+    openai_serving_embedding: ServingEmbedding | None = None
+    serving_reranking: ServingScores | None = None
 
     def __init__(
         self,
         model_name: str,
         args: Namespace,
-        request_logger: Optional[RequestLogger] = None,
+        request_logger: RequestLogger | None = None,
     ):
         super().__init__(model_name)
         self.args = args
@@ -76,7 +87,7 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
         self.vllm_engine_args = engine_args
         self.request_logger = request_logger
         self.model_name = model_name
-        self.base_model_paths = []
+        self.base_model_paths: list[BaseModelPath] = []
         self.log_stats = True
         self.model_config = None
 
@@ -85,10 +96,7 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
             ToolParserManager.import_tool_parser(self.args.tool_parser_plugin)
 
         valid_tool_parsers = ToolParserManager.list_registered()
-        if (
-            self.args.enable_auto_tool_choice
-            and self.args.tool_call_parser not in valid_tool_parsers
-        ):
+        if self.args.enable_auto_tool_choice and self.args.tool_call_parser not in valid_tool_parsers:
             raise KeyError(
                 f"invalid tool call parser: {self.args.tool_call_parser} "
                 f"(chose from {{ {','.join(valid_tool_parsers)} }})"
@@ -99,8 +107,7 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
             reasoning_parser := self.args.structured_outputs_config.reasoning_parser
         ) and reasoning_parser not in valid_reasoning_parsers:
             raise KeyError(
-                f"invalid reasoning parser: {reasoning_parser} "
-                f"(chose from {{ {','.join(valid_reasoning_parsers)} }})"
+                f"invalid reasoning parser: {reasoning_parser} (chose from {{ {','.join(valid_reasoning_parsers)} }})"
             )
 
         if torch.cuda.is_available():
@@ -118,8 +125,7 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
                 served_model_names = [self.model_name]
 
             self.base_model_paths = [
-                BaseModelPath(name=name, model_path=self.args.model)
-                for name in served_model_names
+                BaseModelPath(name=name, model_path=self.args.model) for name in served_model_names
             ]
 
             self.log_stats = not self.args.disable_log_stats
@@ -240,17 +246,15 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
     async def create_completion(
         self,
         request: CompletionRequest,
-        raw_request: Optional[Request] = None,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Union[AsyncGenerator[str, None], Completion, ErrorResponse]:
+        raw_request: Request | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[str, None] | Completion | ErrorResponse:
         if self.openai_serving_completion is None:
             return create_error_response(
                 message="The model does not support Completions API",
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-        response = await self.openai_serving_completion.create_completion(
-            request, raw_request
-        )
+        response = await self.openai_serving_completion.create_completion(request, raw_request)
 
         if isinstance(response, engineError):
             return create_error_response(
@@ -265,17 +269,15 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
     async def create_chat_completion(
         self,
         request: ChatCompletionRequest,
-        raw_request: Optional[Request] = None,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Union[AsyncGenerator[str, None], ChatCompletion, ErrorResponse]:
+        raw_request: Request | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[str, None] | ChatCompletion | ErrorResponse:
         if self.openai_serving_chat is None:
             return create_error_response(
                 message="The model does not support Chat Completions API",
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-        response = await self.openai_serving_chat.create_chat_completion(
-            request, raw_request
-        )
+        response = await self.openai_serving_chat.create_chat_completion(request, raw_request)
 
         if isinstance(response, engineError):
             return create_error_response(
@@ -290,17 +292,21 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
     async def create_embedding(
         self,
         request: EmbeddingRequest,
-        raw_request: Optional[Request] = None,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Union[AsyncGenerator[str, None], Embedding, ErrorResponse]:
+        raw_request: Request | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[str, None] | Embedding | ErrorResponse:
         if self.openai_serving_embedding is None:
             return create_error_response(
                 message="The model does not support Embeddings API",
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-        response = await self.openai_serving_embedding.create_embedding(
-            request, raw_request
-        )
+        try:
+            response = await self.openai_serving_embedding(request, raw_request)
+        except VLLMValidationError as e:
+            return create_error_response(
+                message=str(e),
+                status_code=HTTPStatus.BAD_REQUEST,
+            )
 
         if isinstance(response, engineError):
             return create_error_response(
@@ -315,15 +321,21 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
     async def create_rerank(
         self,
         request: RerankRequest,
-        raw_request: Optional[Request] = None,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Union[AsyncGenerator[str, None], Rerank, ErrorResponse]:
+        raw_request: Request | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> AsyncGenerator[str, None] | Rerank | ErrorResponse:
         if self.serving_reranking is None:
             return create_error_response(
                 message="The model does not support Rerank API",
                 status_code=HTTPStatus.BAD_REQUEST,
             )
-        response = await self.serving_reranking.do_rerank(request, raw_request)
+        try:
+            response = await self.serving_reranking.do_rerank(request, raw_request)
+        except VLLMValidationError as e:
+            return create_error_response(
+                message=str(e),
+                status_code=HTTPStatus.BAD_REQUEST,
+            )
 
         if isinstance(response, engineError):
             return create_error_response(
@@ -334,3 +346,30 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
             )
 
         return response
+
+    @staticmethod
+    def load_model_from_cli(args) -> "VLLMModel":
+        model_id_or_path = get_model_id_or_path(args)
+
+        if not infer_vllm_supported_from_model_architecture(model_id_or_path):
+            raise ValueError(
+                f"Model not supported by vLLM ({vllm.__version__}) + transformers ({transformers.__version__})"
+            )
+
+        if args.disable_log_requests:
+            request_logger = None
+        else:
+            request_logger = KServeCustomRequestLogger(max_log_len=args.max_log_len)
+
+        if model_id_or_path is None:
+            raise ValueError("You must provide a model_id or model_dir")
+
+        args.model = args.model_id or args.model_dir
+        args.revision = args.model_revision
+        if args.served_model_name is not None:
+            args.model_name = args.served_model_name[0]
+
+        model = VLLMModel(args.model_name, args, request_logger=request_logger)
+        model.load()
+
+        return model
