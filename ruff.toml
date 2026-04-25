@@ -1,0 +1,53 @@
+line-length = 120
+indent-width = 4
+exclude = [
+    "vllmserver/_version.py"
+]
+
+[lint]
+select = [
+    "E",  # pycodestyle
+    "F",  # Pyflakes
+    "N",  # pep8-naming
+    "UP",  # pyupgrade
+    "B",  # flake8-bugbear
+    "S",  # flake8-bandit
+    "BLE",  # flake8-blind-except
+    "A",  # flake8-builtins
+    "I",  # isort
+    "G",  # flake8-logging-format
+    "INP",  # flake8-no-pep420
+    "RUF",  # Ruff-specific rules
+]
+ignore = [
+  "ERA001",  # Disable eradicate (commented code removal)
+  "W191",  # Disable Conflicting lint rules, see https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+  "E501",
+  "E111",
+  "E117",
+  "D206",
+  "D300",
+  "Q000",
+  "Q001",
+  "Q002",
+  "Q003",
+  "COM812",
+  "COM819",
+  "ISC001",
+  "ISC002",
+  "RUF100",  # Disable unused `noqa` directive
+]
+
+[lint.pycodestyle]
+ignore-overlong-task-comments = true
+
+[lint.isort]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+lines-after-imports = 2
+
+[lint.per-file-ignores]
+# Ignore "E402", "F403", "F405" (import violations) in __init__.py files.
+# Ignore "S" (flake8-bandit) and "N802" (function name should be lowercase) in tests and docs.
+"__init__.py" = ["E402", "F403", "F405"]
+"**/{tests,docs}/*" = ["E402", "F403", "F405", "S", "N802"]
+"**/*test*.py" = ["E402", "F403", "F405", "S", "N802"]
