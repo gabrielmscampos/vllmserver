@@ -7,7 +7,7 @@ name = "vllmserver"
 dynamic = ["version"]
 description = "Model server implementation for vLLM. Not intended for use outside KServe."
 readme = "README.md"
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
 authors = [
     { name = "Gabriel Moreira", email = "gabrielmscampos@gmail.com" }
 ]
