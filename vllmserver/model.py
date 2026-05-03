@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import gc
 from argparse import Namespace
 from collections.abc import AsyncGenerator
 from http import HTTPStatus
@@ -238,6 +240,18 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
             self.engine_client.shutdown()
         self.ready = False
 
+    async def swap_to(self, model_dir: str, model_name: str) -> None:
+        if self.args is None:
+            raise RuntimeError("swap_to called before model args were initialised")
+        self.stop_engine()
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        self.args.model = model_dir
+        self.args.served_model_name = [model_name]
+        self.vllm_engine_args = build_vllm_engine_args(self.args)
+        await self.start_engine()
+
     async def healthy(self) -> bool:
         # check_health() may throw exceptions which are caught in OpenAIEndpoints class
         await self.engine_client.check_health()
@@ -385,3 +399,76 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
         model.load()
 
         return model
+
+
+class HotReloadVLLMModel(VLLMModel):
+    def __init__(
+        self,
+        model_name: str,
+        args: Namespace,
+        request_logger: "RequestLogger | None" = None,
+    ):
+        super().__init__(model_name, args, request_logger)
+        self._manager: Any = None  # HotReloadManager, set via set_manager()
+        self._watcher_task: asyncio.Task | None = None
+
+    def set_manager(self, manager: Any) -> None:
+        self._manager = manager
+
+    async def start_engine(self) -> bool:
+        result = await super().start_engine()
+        if self._manager is not None:
+            self._watcher_task = asyncio.create_task(self._manager._watch_config())
+        return result
+
+    async def _ensure(self, model_name: str) -> "ErrorResponse | None":
+        if self._manager is None:
+            return None
+        spec = self._manager.get_spec(model_name)
+        if spec is None:
+            return create_error_response(
+                message=f"Model '{model_name}' is not available",
+                status_code=HTTPStatus.NOT_FOUND,
+            )
+        await self._manager.ensure_loaded(model_name)
+        return None
+
+    async def create_chat_completion(
+        self,
+        request: "ChatCompletionRequest",
+        raw_request: "Request | None" = None,
+        context: "dict[str, Any] | None" = None,
+    ) -> "AsyncGenerator[str, None] | ChatCompletion | ErrorResponse":
+        if err := await self._ensure(request.model):
+            return err
+        return await super().create_chat_completion(request, raw_request, context)
+
+    async def create_completion(
+        self,
+        request: "CompletionRequest",
+        raw_request: "Request | None" = None,
+        context: "dict[str, Any] | None" = None,
+    ) -> "AsyncGenerator[str, None] | Completion | ErrorResponse":
+        if err := await self._ensure(request.model):
+            return err
+        return await super().create_completion(request, raw_request, context)
+
+    async def create_embedding(
+        self,
+        request: "EmbeddingRequest",
+        raw_request: "Request | None" = None,
+        context: "dict[str, Any] | None" = None,
+    ) -> "AsyncGenerator[str, None] | Embedding | ErrorResponse":
+        if err := await self._ensure(request.model):
+            return err
+        return await super().create_embedding(request, raw_request, context)
+
+    async def create_rerank(
+        self,
+        request: "RerankRequest",
+        raw_request: "Request | None" = None,
+        context: "dict[str, Any] | None" = None,
+    ) -> "AsyncGenerator[str, None] | Rerank | ErrorResponse":
+        if err := await self._ensure(request.model):
+            return err
+        return await super().create_rerank(request, raw_request, context)

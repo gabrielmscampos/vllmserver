@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import sys
+from pathlib import Path
 
 import kserve
 from kserve import logging
@@ -21,8 +22,9 @@ from kserve.logging import logger
 from vllm.utils.argparse_utils import FlexibleArgumentParser
 
 from ._version import __version__
-from .model import VLLMModel
-from .utils import add_vllm_cli_parser, list_of_strings
+from .model import HotReloadVLLMModel, VLLMModel
+from .request_logger import RequestLogger as KServeCustomRequestLogger
+from .utils import add_vllm_cli_parser, infer_vllm_supported_from_model_architecture, list_of_strings
 
 
 if __name__ == "__main__":
@@ -99,6 +101,13 @@ if __name__ == "__main__":
         help="Return raw logits without processing. Supported only classification tasks such as token classification, text classification and fill-mask.",
     )
     parser.add_argument("--disable_log_requests", action="store_true", help="Disable logging requests")
+    parser.add_argument(
+        "--hot-reload-config",
+        dest="hot_reload_config",
+        required=False,
+        default=None,
+        help="Path to a YAML config for on-demand model hot-reload",
+    )
 
     # The initial_args are required to determine whether the vLLM backend is enabled.
     initial_args, _ = parser.parse_known_args()
@@ -112,14 +121,49 @@ if __name__ == "__main__":
 
     try:
         model_server = kserve.ModelServer()
-        model = VLLMModel.load_model_from_cli(args)
 
-        # Register lora modules with the model server
-        if args.lora_modules:
-            for lora_module in args.lora_modules:
-                model_server.register_model(model, lora_module.name)
+        if args.hot_reload_config:
+            from .hot_reload import HotReloadManager, load_hot_reload_config
 
-        model_server.start([model])
+            hr_config = load_hot_reload_config(args.hot_reload_config)
+            HotReloadManager.validate_config(hr_config)
+
+            default_spec = next(s for s in hr_config.models if s.default)
+            args.model = default_spec.model_dir
+            args.model_name = default_spec.name
+            args.served_model_name = [default_spec.name]
+
+            if not infer_vllm_supported_from_model_architecture(Path(default_spec.model_dir)):
+                raise ValueError(f"Default model at '{default_spec.model_dir}' is not supported by vLLM")
+
+            request_logger = (
+                None if args.disable_log_requests else KServeCustomRequestLogger(max_log_len=args.max_log_len)
+            )
+            model = HotReloadVLLMModel(default_spec.name, args, request_logger=request_logger)  # type: ignore[arg-type]
+            model.load()
+
+            manager = HotReloadManager(
+                hr_config,
+                model,
+                register_fn=lambda name: model_server.register_model(model, name),
+            )
+            manager._current = default_spec
+            model.set_manager(manager)
+
+            for spec in hr_config.models:
+                model_server.register_model(model, spec.name)
+
+            model_server.start([model])
+
+        else:
+            model = VLLMModel.load_model_from_cli(args)
+
+            if args.lora_modules:
+                for lora_module in args.lora_modules:
+                    model_server.register_model(model, lora_module.name)
+
+            model_server.start([model])
+
     except Exception as e:  # noqa: BLE001
         logger.error(f"Failed to start model server: {e}", exc_info=True)
         sys.exit(1)
