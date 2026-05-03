@@ -16,4 +16,27 @@
 from ._version import __version__
 
 
+def _patch_vllm_score_compat() -> None:
+    # kserve <=0.18 imports vllm.entrypoints.pooling.score.protocol, which was
+    # renamed to vllm.entrypoints.pooling.scoring.protocol in vLLM 0.20.
+    # Register the old path as an alias so kserve loads without modification.
+    import importlib
+    import sys
+    import types
+
+    _parent = "vllm.entrypoints.pooling.score"
+    if _parent in sys.modules:
+        return
+    try:
+        scoring = importlib.import_module("vllm.entrypoints.pooling.scoring.protocol")
+    except ModuleNotFoundError:
+        return
+    sys.modules[_parent] = types.ModuleType(_parent)
+    sys.modules[f"{_parent}.protocol"] = scoring
+
+
+_patch_vllm_score_compat()
+del _patch_vllm_score_compat
+
+
 __all__ = ["__version__"]

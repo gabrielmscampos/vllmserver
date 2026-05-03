@@ -168,5 +168,4 @@ docker build -t localhost/vllmserver:latest --build-arg BUILD_VERSION=0.0.0-loca
 
 ## Notes
 
-- Some models (e.g. Qwen3.x) require up-to-date transformers: `pip install --upgrade transformers`
 - Tensor parallelism is configured automatically based on the number of available GPUs

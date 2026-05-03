@@ -52,7 +52,7 @@ from vllm.entrypoints.openai.engine.protocol import ErrorResponse as engineError
 from vllm.entrypoints.openai.models.protocol import BaseModelPath
 from vllm.entrypoints.openai.models.serving import OpenAIServingModels
 from vllm.entrypoints.pooling.embed.serving import ServingEmbedding
-from vllm.entrypoints.pooling.score.serving import ServingScores
+from vllm.entrypoints.pooling.scoring.serving import ServingScores
 from vllm.exceptions import VLLMValidationError
 from vllm.reasoning import ReasoningParserManager
 from vllm.tool_parsers import ToolParserManager
@@ -153,7 +153,6 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
             openai_serving_render = OpenAIServingRender(
                 model_config=vllm_config.model_config,
                 renderer=self.engine_client.renderer,
-                io_processor=self.engine_client.io_processor,
                 model_registry=self.openai_serving_models.registry,
                 request_logger=self.request_logger,
                 chat_template=resolved_chat_template,
