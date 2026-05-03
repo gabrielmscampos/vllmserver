@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import sys
 from pathlib import Path
 
@@ -129,9 +130,14 @@ if __name__ == "__main__":
             HotReloadManager.validate_config(hr_config)
 
             default_spec = next(s for s in hr_config.models if s.default)
+            base_args = copy.deepcopy(args)
             args.model = default_spec.model_dir
             args.model_name = default_spec.name
             args.served_model_name = [default_spec.name]
+            for key, val in (default_spec.vllm_args or {}).items():
+                setattr(args, key.replace("-", "_"), val)
+            if default_spec.vllm_args:
+                logger.info("Applied vllm_args for default model '%s': %s", default_spec.name, default_spec.vllm_args)
 
             if not infer_vllm_supported_from_model_architecture(Path(default_spec.model_dir)):
                 raise ValueError(f"Default model at '{default_spec.model_dir}' is not supported by vLLM")
@@ -140,6 +146,7 @@ if __name__ == "__main__":
                 None if args.disable_log_requests else KServeCustomRequestLogger(max_log_len=args.max_log_len)
             )
             model = HotReloadVLLMModel(default_spec.name, args, request_logger=request_logger)  # type: ignore[arg-type]
+            model._base_args = base_args
             model.load()
 
             manager = HotReloadManager(

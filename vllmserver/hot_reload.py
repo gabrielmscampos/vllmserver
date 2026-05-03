@@ -16,7 +16,7 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from kserve.logging import logger
@@ -31,6 +31,7 @@ class ModelSpec:
     name: str
     model_dir: str
     default: bool = False
+    vllm_args: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -93,8 +94,9 @@ class HotReloadManager:
     async def _swap_to(self, spec: ModelSpec) -> None:
         current_name = self._current.name if self._current else "none"
         logger.info("Hot-reload: swapping from '%s' to '%s'", current_name, spec.name)
+        logger.info("Hot-reload: vllm_args for '%s': %s", spec.name, spec.vllm_args or {})
         try:
-            await self._model.swap_to(spec.model_dir, spec.name)
+            await self._model.swap_to(spec.model_dir, spec.name, spec.vllm_args or None)
             self._current = spec
             logger.info("Hot-reload: successfully loaded '%s'", spec.name)
         except Exception:

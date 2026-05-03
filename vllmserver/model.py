@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import asyncio
+import copy
 import gc
 from argparse import Namespace
 from collections.abc import AsyncGenerator
@@ -92,6 +93,7 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
         self.base_model_paths: list[BaseModelPath] = []
         self.log_stats = True
         self.model_config = None
+        self._base_args = copy.deepcopy(args)
 
     async def start_engine(self):
         if self.args.tool_parser_plugin and len(self.args.tool_parser_plugin) > 3:
@@ -240,15 +242,18 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
             self.engine_client.shutdown()
         self.ready = False
 
-    async def swap_to(self, model_dir: str, model_name: str) -> None:
+    async def swap_to(self, model_dir: str, model_name: str, vllm_args: dict[str, Any] | None = None) -> None:
         if self.args is None:
             raise RuntimeError("swap_to called before model args were initialised")
         self.stop_engine()
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        self.args = copy.deepcopy(self._base_args)
         self.args.model = model_dir
         self.args.served_model_name = [model_name]
+        for key, val in (vllm_args or {}).items():
+            setattr(self.args, key.replace("-", "_"), val)
         self.vllm_engine_args = build_vllm_engine_args(self.args)
         await self.start_engine()
 

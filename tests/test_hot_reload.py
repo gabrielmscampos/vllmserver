@@ -114,7 +114,7 @@ async def test_ensure_loaded_triggers_swap():
 
     await manager.ensure_loaded("m2")
 
-    model.swap_to.assert_awaited_once_with("/fake/m2", "m2")
+    model.swap_to.assert_awaited_once_with("/fake/m2", "m2", None)
     assert manager._current.name == "m2"
 
 
@@ -127,7 +127,7 @@ async def test_ensure_loaded_concurrent_waiters_only_swap_once():
     model = MagicMock()
     call_count = 0
 
-    async def counted_swap(model_dir, model_name):
+    async def counted_swap(model_dir, model_name, vllm_args=None):
         nonlocal call_count
         call_count += 1
         await asyncio.sleep(0)  # yield
@@ -151,7 +151,7 @@ async def test_swap_failure_falls_back_to_default():
     model = MagicMock()
     call_args: list[str] = []
 
-    async def swap_side_effect(model_dir, model_name):
+    async def swap_side_effect(model_dir, model_name, vllm_args=None):
         call_args.append(model_name)
         if model_name == "m2":
             raise RuntimeError("failed to load m2")
@@ -172,7 +172,7 @@ async def test_swap_failure_default_also_fails_raises():
     config = _make_config(("m1", "/fake/m1", True))
     model = MagicMock()
 
-    async def always_fail(model_dir, model_name):
+    async def always_fail(model_dir, model_name, vllm_args=None):
         raise RuntimeError("always fails")
 
     model.swap_to = always_fail
