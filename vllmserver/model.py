@@ -94,6 +94,7 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
         self.log_stats = True
         self.model_config = None
         self._base_args = copy.deepcopy(args)
+        self._engine_ready = asyncio.Event()
 
     async def start_engine(self):
         if self.args.tool_parser_plugin and len(self.args.tool_parser_plugin) > 3:
@@ -227,6 +228,7 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
             )
 
         self.ready = True
+        self._engine_ready.set()
         return self.ready
 
     def load(self) -> bool:
@@ -241,14 +243,15 @@ class VLLMModel(OpenAIEncoderModel, OpenAIGenerativeModel):  # pylint:disable=c-
             # V1 AsyncLLM only (V0 is deprecated)
             self.engine_client.shutdown()
         self.ready = False
+        self._engine_ready.clear()
 
     async def swap_to(self, model_dir: str, model_name: str, vllm_args: dict[str, Any] | None = None) -> None:
         if self.args is None:
             raise RuntimeError("swap_to called before model args were initialised")
-        self.stop_engine()
-        gc.collect()
+        await asyncio.to_thread(self.stop_engine)
+        await asyncio.to_thread(gc.collect)
         if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+            await asyncio.to_thread(torch.cuda.empty_cache)
         self.args = copy.deepcopy(self._base_args)
         self.args.model = model_dir
         self.args.served_model_name = [model_name]

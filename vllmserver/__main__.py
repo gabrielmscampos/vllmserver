@@ -13,9 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import copy
 import sys
 from pathlib import Path
+from typing import Any
 
 import kserve
 from fastapi import HTTPException
@@ -161,28 +163,52 @@ if __name__ == "__main__":
 
             from kserve.model_server import app as _kserve_app
 
+            async def _wait_for_engine() -> None:
+                await model._engine_ready.wait()
+
+            _kserve_app.router.on_startup.append(_wait_for_engine)
+
             class _SwapRequest(BaseModel):
                 model: str
+
+            _swap_state: dict[str, Any] = {"task": None, "target": None, "error": None}
 
             @_kserve_app.post("/swap")
             async def _swap_endpoint(req: _SwapRequest) -> dict:
                 spec = manager.get_spec(req.model)
                 if spec is None:
                     raise HTTPException(status_code=404, detail=f"Model '{req.model}' is not in the registry")
-                prev = manager._current.name if manager._current else None
-                await manager.ensure_loaded(req.model)
-                current = manager._current
-                if current is None or current.name != req.model:
+                task: asyncio.Task | None = _swap_state["task"]
+                if task is not None and not task.done():
                     raise HTTPException(
-                        status_code=503,
-                        detail=f"Swap to '{req.model}' failed; currently serving '{current.name if current else 'none'}'",
+                        status_code=409,
+                        detail=f"Swap to '{_swap_state['target']}' is already in progress",
                     )
-                return {"status": "ready", "model": current.name, "previously": prev}
+
+                async def _do_swap() -> None:
+                    try:
+                        await manager.ensure_loaded(req.model)
+                        _swap_state["error"] = None
+                    except Exception as exc:  # noqa: BLE001
+                        _swap_state["error"] = str(exc)
+
+                _swap_state["target"] = req.model
+                _swap_state["error"] = None
+                _swap_state["task"] = asyncio.create_task(_do_swap())
+                return {"status": "swapping", "model": req.model}
 
             @_kserve_app.get("/swap/status")
             async def _swap_status() -> dict:
                 current = manager._current
-                return {"model": current.name if current else None, "ready": model.ready}
+                task: asyncio.Task | None = _swap_state["task"]
+                swapping = task is not None and not task.done()
+                return {
+                    "model": current.name if current else None,
+                    "ready": model.ready,
+                    "swapping": swapping,
+                    "swapping_to": _swap_state["target"] if swapping else None,
+                    "error": _swap_state["error"],
+                }
 
             for spec in hr_config.models:
                 model_server.register_model(model, spec.name)
@@ -190,7 +216,14 @@ if __name__ == "__main__":
             model_server.start([model])
 
         else:
+            from kserve.model_server import app as _kserve_app
+
             model = VLLMModel.load_model_from_cli(args)
+
+            async def _wait_for_engine() -> None:
+                await model._engine_ready.wait()
+
+            _kserve_app.router.on_startup.append(_wait_for_engine)
 
             if args.lora_modules:
                 for lora_module in args.lora_modules:

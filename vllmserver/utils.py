@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 from argparse import Namespace
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -72,13 +73,14 @@ async def build_async_engine_client_from_engine_args(
     """
 
     usage_context = UsageContext.OPENAI_API_SERVER
-    vllm_config = engine_args.create_engine_config(usage_context=usage_context)
+    vllm_config = await asyncio.to_thread(engine_args.create_engine_config, usage_context=usage_context)
 
     from vllm.v1.engine.async_llm import AsyncLLM
 
     async_llm: AsyncLLM | None = None
     try:
-        async_llm = AsyncLLM.from_vllm_config(
+        async_llm = await asyncio.to_thread(
+            AsyncLLM.from_vllm_config,
             vllm_config=vllm_config,
             usage_context=usage_context,
             enable_log_requests=engine_args.enable_log_requests,
