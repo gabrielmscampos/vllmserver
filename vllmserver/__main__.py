@@ -18,8 +18,10 @@ import sys
 from pathlib import Path
 
 import kserve
+from fastapi import HTTPException
 from kserve import logging
 from kserve.logging import logger
+from pydantic import BaseModel
 from vllm.utils.argparse_utils import FlexibleArgumentParser
 
 from ._version import __version__
@@ -156,6 +158,31 @@ if __name__ == "__main__":
             )
             manager._current = default_spec
             model.set_manager(manager)
+
+            from kserve.model_server import app as _kserve_app
+
+            class _SwapRequest(BaseModel):
+                model: str
+
+            @_kserve_app.post("/swap")
+            async def _swap_endpoint(req: _SwapRequest) -> dict:
+                spec = manager.get_spec(req.model)
+                if spec is None:
+                    raise HTTPException(status_code=404, detail=f"Model '{req.model}' is not in the registry")
+                prev = manager._current.name if manager._current else None
+                await manager.ensure_loaded(req.model)
+                current = manager._current
+                if current is None or current.name != req.model:
+                    raise HTTPException(
+                        status_code=503,
+                        detail=f"Swap to '{req.model}' failed; currently serving '{current.name if current else 'none'}'",
+                    )
+                return {"status": "ready", "model": current.name, "previously": prev}
+
+            @_kserve_app.get("/swap/status")
+            async def _swap_status() -> dict:
+                current = manager._current
+                return {"model": current.name if current else None, "ready": model.ready}
 
             for spec in hr_config.models:
                 model_server.register_model(model, spec.name)
