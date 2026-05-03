@@ -54,6 +54,7 @@ FROM base AS build
 ARG WORKSPACE_DIR
 ARG LMCACHE_VERSION=0.4.2
 ARG FLASHINFER_VERSION=0.6.6
+ARG BUILD_VERSION=0.0.0+local
 
 WORKDIR ${WORKSPACE_DIR}
 
@@ -71,7 +72,9 @@ COPY pyproject.toml pyproject.toml
 COPY uv.lock uv.lock
 
 # Install dependencies
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --active --no-cache
+# SETUPTOOLS_SCM_PRETEND_VERSION is required because .git is not in the build context
+RUN --mount=type=cache,target=/root/.cache/uv \
+    SETUPTOOLS_SCM_PRETEND_VERSION=${BUILD_VERSION} uv sync --active --no-cache
 
 # Install vllm addons
 # https://docs.vllm.ai/en/latest/models/extensions/runai_model_streamer.html, https://docs.vllm.ai/en/latest/models/extensions/tensorizer.html
