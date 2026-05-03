@@ -70,6 +70,7 @@ ENV PATH="${WORKSPACE_DIR}/${VENV_PATH}/bin:$PATH"
 COPY vllmserver vllmserver
 COPY pyproject.toml pyproject.toml
 COPY uv.lock uv.lock
+COPY README.md README.md
 
 # Install dependencies
 # SETUPTOOLS_SCM_PRETEND_VERSION is required because .git is not in the build context
