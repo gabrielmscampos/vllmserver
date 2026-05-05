@@ -101,9 +101,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR ${WORKSPACE_DIR}
 
 # Install Python and other dependencies
-RUN apt-get update -y \
+# cuda-nvcc is required for DeepGEMM JIT kernel compilation at runtime
+RUN CUDA_PKG=$(echo ${CUDA_VERSION} | cut -d. -f1,2 | tr '.' '-') && \
+    apt-get update -y \
     && apt-get upgrade -y \
-    && apt-get install -y software-properties-common curl ffmpeg libsm6 libxext6 libgl1 gcc python3-dev libibverbs-dev \
+    && apt-get install -y software-properties-common curl ffmpeg libsm6 libxext6 libgl1 gcc python3-dev libibverbs-dev cuda-nvcc-${CUDA_PKG} \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ARG VENV_PATH
@@ -128,6 +130,7 @@ ENV VLLM_NCCL_SO_PATH="/lib/x86_64-linux-gnu/libnccl.so.2"
 # https://github.com/vllm-project/vllm/issues/6152
 # Set the multiprocess method to spawn to avoid issues with cuda initialization for `mp` executor backend.
 ENV VLLM_WORKER_MULTIPROC_METHOD="spawn"
+ENV CUDA_HOME="/usr/local/cuda"
 
 USER 1000
 ENV PYTHONPATH=${WORKSPACE_DIR}/vllmserver
