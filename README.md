@@ -166,7 +166,7 @@ The container image is built and uploaded to ghcr.io automatically whenever a ta
 docker build -t localhost/vllmserver:latest --build-arg BUILD_VERSION=0.0.0-local .
 ```
 
-The image takes about ~30 GB of disk space after the build is complete.
+The image takes ~30 GB of disk space after the build is complete.
 
 ```
 IMAGE                               ID             DISK USAGE   CONTENT SIZE   EXTRA
@@ -200,6 +200,121 @@ The model above was loaded from a local directory, you can download it with:
 ```bash
 hf download Qwen/Qwen3.5-0.8B --local-dir ./hf-models/Qwen/Qwen3.5-0.8B
 ```
+
+## Deploying on KServe
+
+### Simple vLLM model
+
+Create an `InferenceService` that runs the vllmserver container. The example below deploys a `Qwen3.5-0.8B` model with reasoning and tool-calling enabled:
+
+```yaml
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: vllmserver
+  annotations:
+    sidecar.istio.io/inject: "false"
+spec:
+  predictor:
+    minReplicas: 1  # Ensures the pod never scales to zero
+    containers:
+      - name: kserve-container
+        image: ghcr.io/gabrielmscampos/vllmserver:latest
+        args:
+          - --model_name=qwen3.5-0.8b
+          - --model_id=Qwen/Qwen3.5-0.8B
+          - --language-model-only
+          - --enable-auto-tool-choice
+          - --reasoning-parser=qwen3
+          - --tool-call-parser=qwen3_coder
+        resources:
+          limits:
+            cpu: "10"
+            memory: 8Gi
+            nvidia.com/gpu: "1"
+          requests:
+            cpu: "1"
+            memory: 4Gi
+            nvidia.com/gpu: "1"
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+```
+
+### Hot-reload model server
+
+Create an `InferenceService` that runs the vllmserver container, but reads multiple models from a config file.
+
+```yaml
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: vllmserver
+  annotations:
+    sidecar.istio.io/inject: "false"
+spec:
+  predictor:
+    minReplicas: 1  # Ensures the pod never scales to zero
+    containers:
+      - name: kserve-container
+        image: ghcr.io/gabrielmscampos/vllmserver:v0.1.0
+        args:
+          - --hot-reload-config=/mnt/config.yaml
+        resources:
+          requests:
+            cpu: "1"
+            memory: 4Gi
+            nvidia.com/gpu: "1"
+          limits:
+            cpu: "10"
+            memory: 8Gi
+            nvidia.com/gpu: "1"
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+```
+
+The config file may look like:
+
+```yaml
+models:
+  - name: qwen3.5-0.8b
+    model_dir: /mnt/models/Qwen/Qwen3.5-0.8B
+    default: true
+    vllm_args:
+      language_model_only: true
+      enable_auto_tool_choice: true
+      reasoning_parser: qwen3
+      tool_call_parser: qwen3_coder
+
+  - name: qwen3.6-27b-fp8
+    model_dir: /mnt/models/Qwen/Qwen3.6-27B-FP8
+    vllm_args:
+      language_model_only: true
+      enable_auto_tool_choice: true
+      reasoning_parser: qwen3
+      tool_call_parser: qwen3_coder
+
+  - name: qwen3.6-35b-a3b-fp8
+    model_dir: /mnt/models/Qwen/Qwen3.6-35B-A3B-FP8
+    vllm_args:
+      language_model_only: true
+      enable_auto_tool_choice: true
+      reasoning_parser: qwen3
+      tool_call_parser: qwen3_coder
+
+  - name: glm-4.7-flash-awq-4bit
+    model_dir: /mnt/cyankiwi/GLM-4.7-Flash-AWQ-4bit
+    vllm_args:
+      enable_auto_tool_choice: true
+      tool_call_parser: glm47
+      reasoning_parser: glm45
+      speculative_config_method:
+        method: mtp
+        num_speculative_tokens: 1
+```
+
+The `/mnt` directory can be a persistent volume defined in another resource, where models can be pre-downloaded and the config file updated on-demand.
 
 ## Notes
 
