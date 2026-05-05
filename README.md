@@ -216,7 +216,6 @@ metadata:
     sidecar.istio.io/inject: "false"
 spec:
   predictor:
-    minReplicas: 1  # Ensures the pod never scales to zero
     containers:
       - name: kserve-container
         image: ghcr.io/gabrielmscampos/vllmserver:latest
@@ -254,7 +253,6 @@ metadata:
     sidecar.istio.io/inject: "false"
 spec:
   predictor:
-    minReplicas: 1  # Ensures the pod never scales to zero
     containers:
       - name: kserve-container
         image: ghcr.io/gabrielmscampos/vllmserver:v0.1.0
@@ -315,6 +313,45 @@ models:
 ```
 
 The `/mnt` directory can be a persistent volume defined in another resource, where models can be pre-downloaded and the config file updated on-demand.
+
+### Raw deployment mode
+
+You may consider deploying the vllmserver in `RawDeployment` mode to completely skip KServe's serverless features. It might be a good option in heavy constrained environments. You just need to patch the InferenceService with the following annotation:
+
+```yaml
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: vllmserver
+  annotations:
+    sidecar.istio.io/inject: "false"
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    minReplicas: 1  # Ensures the pod never scales to zero
+```
+
+Note that bootstraping and deleting the InferenceService will be faster than usual.
+
+### Avoiding healthcheck timeouts
+
+You may want to patch the InferenceService `progress-deadline` and add a `startupProbe` to avoid havin the InferecenService's pod killed due to a slow startup:
+
+```yaml
+spec:
+  predictor:
+    annotations:
+      # 1. Increase the Knative deployment timeout (default is 10m/600s)
+      serving.knative.dev/progress-deadline: "45m"
+    containers:
+      - name: kserve-container
+        image: ghcr.io/gabrielmscampos/vllmserver:v0.1.0
+        startupProbe:
+          tcpSocket:
+            port: 8080
+          failureThreshold: 240  # 240 checks * 10 seconds = up to 40 minutes to start
+          periodSeconds: 10
+```
 
 ## Notes
 
