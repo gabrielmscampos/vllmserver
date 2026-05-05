@@ -166,6 +166,41 @@ The container image is built and uploaded to ghcr.io automatically whenever a ta
 docker build -t localhost/vllmserver:latest --build-arg BUILD_VERSION=0.0.0-local .
 ```
 
+The image takes about ~30 GB of disk space after the build is complete.
+
+```
+IMAGE                               ID             DISK USAGE   CONTENT SIZE   EXTRA
+gabrielmscampos/vllmserver:latest   29ab31479f3e       30.2GB         8.13GB
+```
+
+### Debugging the image
+
+You can override the image's entrypoint to inspect the image and debug its contents:
+
+```bash
+docker run --rm -it --device nvidia.com/gpu=all --entrypoint bash docker.io/gabrielmscampos/vllmserver:latest
+```
+
+From within the container, you can start the server as normal:
+
+```bash
+python -m vllmserver --model_id Qwen/Qwen3.5-0.8B
+```
+
+### Running the container
+
+Simply specify the arguments directly after the image identifier:
+
+```bash
+docker run --rm -it --device nvidia.com/gpu=all -p 8080:8080 -v ./hf-models:/mnt/hf-models docker.io/gabrielmscampos/vllmserver:latest --model_dir /mnt/hf-models/Qwen/Qwen3.5-0.8B
+```
+
+The model above was loaded from a local directory, you can download it with:
+
+```bash
+hf download Qwen/Qwen3.5-0.8B --local-dir ./hf-models/Qwen/Qwen3.5-0.8B
+```
+
 ## Notes
 
 - Tensor parallelism is configured automatically based on the number of available GPUs
