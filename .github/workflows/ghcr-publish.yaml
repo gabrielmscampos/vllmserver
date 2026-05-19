@@ -27,6 +27,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
@@ -35,5 +39,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/vllmserver:${{ github.ref_name }}
             ghcr.io/${{ github.repository_owner }}/vllmserver:latest
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
