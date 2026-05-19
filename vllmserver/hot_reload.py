@@ -120,6 +120,12 @@ class HotReloadManager:
                     logger.info("Hot-reload: discovered new model '%s' in config", spec.name)
                     self._registry[spec.name] = spec
                     self._register_fn(spec.name)
+                else:
+                    if self._registry[spec.name] != spec:
+                        logger.info("Hot-reload: updating model '%s' (spec changed)", spec.name)
+                        self._registry[spec.name] = spec
+                    else:
+                        logger.debug("Hot-reload: model '%s' unchanged, skipping", spec.name)
         except Exception:  # noqa: BLE001
             logger.warning("Hot-reload: failed to reload config '%s'", self._config.path, exc_info=True)
 
